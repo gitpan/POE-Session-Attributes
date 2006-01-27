@@ -10,17 +10,13 @@ use Data::Dumper
 
 POE::Session::Attributes -- POE::Session wrapper using attributes to mark state handlers
 
-=head1 ABSTRACT
-
-POE::Session::Attributes is a wrapper using attributes to mark state handlers
-
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -47,7 +43,7 @@ designate state handlers.
 
 =head2 create
 
-This is the wrapper around POE::Session.  It takes 'args', 'heap' and
+This is the wrapper around POE::Session.  It takes 'args', 'heap' an
 'options' arguments and passes them on to POE::Session. It will silently
  ignore 'inline_states', 'package_states', and 'object_states'.
 The session it creates gets it's state handlers from the package where it

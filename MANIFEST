@@ -5,6 +5,7 @@ Makefile.PL
 README
 lib/POE/Session/Attributes.pm
 t/00-load.t
+t/01-tryit.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
