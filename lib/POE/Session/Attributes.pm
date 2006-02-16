@@ -1,153 +1,186 @@
-package POE::Session::Attributes;
+package POE::Session::Attributes ;
 
-use warnings;
-use strict;
-use POE;
-use Attribute::Handlers;
-use Data::Dumper
+use strict ;
+use warnings ;
+
+use	base qw(Class::Data::Inheritable) ;
+use	POE qw(Session) ;
+use	Class::Inspector ;
+
+__PACKAGE__->mk_classdata(qw(states)) ;
+__PACKAGE__->states({}) ;
+
+our $VERSION = '0.01';
+
+sub	MODIFY_CODE_ATTRIBUTES {
+    	my	($class, $code, $attr, @rest) = @_ ;
+	$class->states->{$code} = $attr ;
+	return (@rest) ;
+}
+
+sub	FETCH_CODE_ATTRIBUTES {
+    	my	($self, $code) = @_ ;
+	return ($self->states->{$code}) || () ;
+}
+
+sub	new {
+    	my	$class = shift ;
+	return bless {}, $class ;
+}
+
+sub	spawn {
+	my      $class = shift ;
+	my	$self ;
+	my	$methods = Class::Inspector->methods($class) ;
+	my	%opts ;
+
+	for my $m (@$methods) {
+	    my $sub = $class->can($m) or next ;
+	    my $attr = $class->states->{$sub} or next ;
+	    if ($attr eq "Inline") {
+		($opts{inline_states} ||= {})->{$m} = $sub ;
+	    } elsif ($attr eq "Object") {
+		my $t = ($opts{object_states} ||= [
+			($self ||= $class->new(@_)) => []
+		]) ;
+		push @{$t->[1]}, $m ;
+	    } elsif ($attr eq "Package") {
+		my $t = ($opts{package_states} ||= [$class => []]) ;
+		push @{$t->[1]}, $m ;
+	    } else {
+		die "unknown attribute `$attr' for method $class -> $m" ;
+	    }
+	}
+	$opts{args} = [ @_ ] ;
+	my $sid = POE::Session->create(%opts) ;
+	return (wantarray && $self) ? ($sid, $self) : $sid ;
+}
+
+
+# Preloaded methods go here.
+
+1;
+__END__
 
 =head1 NAME
 
-POE::Session::Attributes -- POE::Session wrapper using attributes to mark state handlers
-
-=head1 VERSION
-
-Version 0.02
-
-=cut
-
-our $VERSION = '0.02';
+POE::Session::Attributes - Use attributes to define your POE Sessions
 
 =head1 SYNOPSIS
 
-    use POE;
-    use base 'POE::Session::Attributes';
+  # in Some/Module.pm
 
-    my $foo = POE::Session::Attributes->create(
-	    heap => {...},
-	    args => [....],
-	    options => {....},
-	);
-    ...
+  package Some::Module ;
+  use base qw(POE::Session::Attributes) ;
+  use POE ;
 
-    sub _start : state {
-	...
-    }
+  sub _start : Package {   # package state
+      my ($pkg, @args) = @_[OBJECT, ARG0 .. $#_] ;
+      ...
+  }
+
+  sub _stop : Object {     # object state
+      my ($self, ...) = @_[OBJECT, ...] ;
+      ...
+  }
+
+  sub some_other_event : Inline {  # inline state
+      print "boo hoo\n" ;
+  }
+
+  ...
+  1 ;
+
+  # meanwhile, in some other file
+
+  use Some::Module ;
+  use POE ;
+
+  my $new_session_id =
+      Some::Module->spawn("your", {arguments => "here"}) ;
+
+  ...
+
+  POE::Kernel->run() ;
+
+  # Inheritance works, too
+  package Some::Module::Subclass ;
+  use base qw(Some::Module) ;
+
+  sub _stop : Object {
+      my ($self, @rest) = @_ ;
+      do_some_local_cleanup() ;
+      $self->SUPER::_stop(@rest) ;  # you can call parent method, too
+  }
+
 
 =head1 DESCRIPTION
 
-This package wraps POE::Session and permits use of a 'state' attributes to
-designate state handlers.  
+This module's purpose is to save you some boilerplate code around POE::Session->create() method. Just inherit your class from POE::Session::Attributes and define some states using attributes.  Method C<spawn()> in your package will be provided by POE::Session::Attributes (of course, you can override it, if any).  
 
-=head1 FUNCTIONS
-
-=head2 create
-
-This is the wrapper around POE::Session.  It takes 'args', 'heap' an
-'options' arguments and passes them on to POE::Session. It will silently
- ignore 'inline_states', 'package_states', and 'object_states'.
-The session it creates gets it's state handlers from the package where it
-was called. Or from a 'package=>' option.  It'll throw a lethal exception
-if package=>arg has no state attribute subroutines.
-
-=cut
-
-my %State;
-
-BEGIN {
-    %State = (
-        package_default => {
-            _start   => sub { die "no _start handler" },
-            _default => sub { warn $_[STATE], ": no handler for this state" },
-        }
-    );
-}
-
-sub create {
-    my $class = shift;
-
-    my %passed = @_;
-    my %arg;
-
-    for (qw(args heap options)) {
-	next unless (exists $passed{$_});
-	$arg{$_} = $passed{$_};
-    }
-
-    my $package = $passed{package};
-    $package ||= (caller)[0];
-
-    if (not exists $State{$package}) {
-	die "no states for package $package";
-    }
-
-    POE::Session->create(
-	%arg,
-       	inline_states => $State{$package}
-    );
-}
-
-=head2 state 
-
-The attribute handler
-
-=cut
-
-sub state : ATTR(CODE) {
-    my ( $package, $symbol, $code, $attribute, $data ) = @_;
-
-    $State{$package}{ *{$symbol}{NAME} } = $code;
-}
-
-=head1 AUTHOR
-
-Chris Fedde, C<< <cfedde at cpan.org> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to
-C<bug-poe-session-attributes at rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=POE-Session-Attributes>.
-I will be notified, and then you'll automatically be notified of progress on
-your bug as I make changes.
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc POE::Session::Attributes
-
-You can also look for information at:
+=head1 ATTRIBUTES
 
 =over 4
 
-=item * AnnoCPAN: Annotated CPAN documentation
+=item sub your_sub : B<Package>
 
-L<http://annocpan.org/dist/POE-Session-Attributes>
+Makes a package state. Name of your subroutine ("your_sub") will be used as
+state name.
 
-=item * CPAN Ratings
+=item sub your_sub : B<Inline>
 
-L<http://cpanratings.perl.org/d/POE-Session-Attributes>
+Makes an inline state. Name of your subroutine ("your_sub") will be used as
+state name.
 
-=item * RT: CPAN's request tracker
+=item sub your_sub : B<Object>
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=POE-Session-Attributes>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/POE-Session-Attributes>
+Makes an object state. Name of your subroutine ("your_sub") will be used as
+state name. An instance of your class will be created by C<spawn()> method,
+if at least one B<Object> state is defined in your package. Method C<new()>
+from your package will be called to create the instance. Arguments for the
+call to C<new()> will be the same as specified for C<spawn()> call.
 
 =back
 
-=head1 ACKNOWLEDGEMENTS
+=head1 METHODS
 
-=head1 COPYRIGHT & LICENSE
+=over 4
 
-Copyright 2006 Chris Fedde, all rights reserved.
+=item new()
 
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+POE::Session::Attributes provides a default constructor (C<bless {}, $class>). You can (and probably should) override it in your inheriting class. C<new()> will be called by C<spawn()> if at least one B<Object> state is defined.
+
+=item spawn()
+
+Creates a new POE::Session based on your class/package. An argument list for C<spawn()> method will be used for "args" parameter to L<POE::Session>->create(). The same argument list will be used to call C<new()>, if you have B<Object> states in your class/package.
+
+Yes, it's probably somewhat messy. Suggest a fix.
+
+When called in scalar context, returns a reference to a newly created
+POE::Session (but make sure to read L<POE::Session> documentation to see why
+you shouldn't use it). In list context, returns a reference to POE::Session and
+a reference to a newly created instance of your class (in case it was really
+created).
+
+=back
+
+=head1 SEE ALSO
+
+L<POE>, L<POE::Session>, L<attributes>.
+
+There is a somewhat similar module on CPAN, L<POE::Session::AttributeBased>.
+
+=head1 AUTHOR
+
+dmitry kim, E<lt>dmitry.kim@gmail.comE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2006 by dmitry kim
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.7 or,
+at your option, any later version of Perl 5 you may have available.
+
 
 =cut
-
-1;    # End of POE::Session::Attributes

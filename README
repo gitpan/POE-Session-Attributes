@@ -1,41 +1,33 @@
-POE-Session-Attributes
+POE-Session-Attributes version 0.01
+===================================
 
-A wrapper around POE::Session that enables use of attributes for setting
-state handlers.
+See module documentation for more information.
 
 INSTALLATION
 
-To install this module, run the following commands:
+To install this module type the following:
 
-    perl Makefile.PL
-    make
-    make test
-    make install
+   perl Makefile.PL
+   make
+   make test
+   make install
 
+DEPENDENCIES
 
-SUPPORT AND DOCUMENTATION
+This module requires these other modules and libraries:
 
-After installing, you can find documentation for this module with the perldoc command.
+  POE
+  Class::Inspector
+  Class::Data::Inheritable
 
-    perldoc POE::Session::Attributes
-
-You can also look for information at:
-
-    Search CPAN
-        http://search.cpan.org/dist/POE-Session-Attributes
-
-    CPAN Request Tracker:
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=POE-Session-Attributes
-
-    AnnoCPAN, annotated CPAN documentation:
-        http://annocpan.org/dist/POE-Session-Attributes
-
-    CPAN Ratings:
-        http://cpanratings.perl.org/d/POE-Session-Attributes
+not tested and probably will not work with perl version < 5.8
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2006 Chris Fedde
+Copyright (C) 2006 by dmitry kim
 
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.7 or,
+at your option, any later version of Perl 5 you may have available.
+
+

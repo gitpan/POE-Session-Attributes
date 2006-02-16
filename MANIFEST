@@ -1,11 +1,8 @@
 Changes
-MANIFEST
-META.yml # Will be created by "make dist"
 Makefile.PL
+MANIFEST
 README
+t/all.t
 lib/POE/Session/Attributes.pm
-t/00-load.t
-t/01-tryit.t
-t/boilerplate.t
-t/pod-coverage.t
-t/pod.t
+eg/demo.pl
+META.yml                                 Module meta-data (added by MakeMaker)
